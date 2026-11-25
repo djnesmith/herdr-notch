@@ -6,7 +6,7 @@ What `djnesmith/herdr-notch` changes from `advpropsys/herdr-notch`. The list com
 `git log upstream/main..djnesmith`. Rule: every change adds its entry here and a line to the
 fork block at the top of `README.md`, in the same commit.
 
-Upstream has no tests. After a merge, run `./build.sh /Applications` and
+After a merge, run `swift test`, then `./build.sh /Applications` and
 `"/Applications/Herdr Notch.app/Contents/MacOS/HerdrNotch" --dump`, then the checks below.
 Upstream has no updater and no network code, so there is nothing to remove for that rule.
 
@@ -20,3 +20,26 @@ Upstream ignores a failed signature (`|| true`); here a failed signature stops t
 - Files: `build.sh`, `Support/Info.plist`
 - Check: `codesign -dv --verbose=2 "/Applications/Herdr Notch.app"` shows
   `Identifier=com.djnesmith.herdr-notch`, `TeamIdentifier=` your team (read it with `codesign -dv`) and `flags=0x10000(runtime)`.
+
+## Features
+
+### 2. Terminal herdr as a source
+Upstream reads the desktop Herdr app's herdr-core (`hc`, `herdr-app`). Agents run in terminal herdr
+(the `herdr` TUI) live in a separate server that `hc` never lists. Each poll now tries terminal herdr
+first and uses the desktop app only when it doesn't answer. Upstream's source still works as before.
+- Reads only, with fixed arguments and no shell: `herdr agent list` and `herdr workspace list` every 3 s,
+  and `herdr agent read <pane> --lines 20` every 2 s while a detail card is open. A click runs
+  `herdr workspace focus <id>` and then `herdr agent focus <pane>`. It never sends keys or text, and it
+  never creates or closes anything. The binary is `/opt/homebrew/bin/herdr` or `/usr/local/bin/herdr`.
+- Status: herdr's `working`, `blocked`, `done` and `idle` map to the same states. `unknown` and any new
+  value show as idle. herdr gives no time for a status, so the app notes when it first sees a change;
+  an agent already in a state at launch counts from "unknown time" and isn't news.
+- The "you" lane follows herdr's focused workspace while a terminal app (iTerm2, Ghostty, Terminal,
+  kitty, WezTerm, Alacritty, Warp) is in front. It can't tell which terminal window shows herdr.
+- To force a source: `defaults write com.djnesmith.herdr-notch source terminal` (or `desktop`);
+  `defaults delete com.djnesmith.herdr-notch source` goes back to automatic. `--dump` prints the source.
+- history.json stores the same fields as upstream (no cwd, no terminal text).
+- Files: `Sources/HerdrNotch/TerminalHerdr.swift` (new), `Store.swift`, `Model.swift` ("claude" shows
+  as Claude Code), `main.swift`, `Package.swift` (test target), `Tests/HerdrNotchTests/TerminalHerdrTests.swift`
+- Check: `swift test` passes. With terminal herdr running, `HerdrNotch --dump` prints `source: terminal`
+  and counts its agents.

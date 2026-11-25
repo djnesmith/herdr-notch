@@ -35,7 +35,7 @@ struct Agent: Identifiable {
 
     var appName: String {
         switch app {
-        case "claude-code": return "Claude Code"
+        case "claude-code", "claude": return "Claude Code"
         case "codex": return "Codex"
         default: return app.prefix(1).uppercased() + app.dropFirst()
         }

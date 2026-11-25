@@ -120,11 +120,14 @@ final class Store: ObservableObject {
         polling = true
         pollCount += 1
         let checkMachines = pollCount % 5 == 1
-        let herdrInFront = NSWorkspace.shared.frontmostApplication?.localizedName == "Herdr"
+        let front = NSWorkspace.shared.frontmostApplication
+        let herdrInFront = front?.localizedName == "Herdr"
+        let terminalInFront = TerminalHerdr.terminals.contains(front?.bundleIdentifier ?? "")
         queue.async {
             let result = Self.snapshot()
-            let focus = herdrInFront ? Self.focusedSpace() : nil
-            let offline = checkMachines ? Self.offlineMachines() : nil
+            let focus = Self.source == .terminal ? (terminalInFront ? Self.terminalFocus : nil)
+                                                 : (herdrInFront ? Self.focusedSpace() : nil)
+            let offline = !checkMachines ? nil : (Self.source == .desktop ? Self.offlineMachines() : [])
             DispatchQueue.main.async {
                 self.polling = false
                 if let offline { self.offline = offline }
@@ -193,9 +196,9 @@ final class Store: ObservableObject {
 
     struct PollError: Error { let message: String }
 
-    static func run(_ args: [String], firstLineOnly: Bool = false, timeout: Double = 8) -> Data? {
+    static func run(_ args: [String], firstLineOnly: Bool = false, timeout: Double = 8, executable: String = hc) -> Data? {
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: hc)
+        p.executableURL = URL(fileURLWithPath: executable)
         p.arguments = args
         let out = Pipe()
         p.standardOutput = out
@@ -215,8 +218,29 @@ final class Store: ObservableObject {
         return data
     }
 
-    /// `hc events --json` prints one full snapshot line covering every machine, then follows. We take that line.
+    /// Where the agents come from: terminal herdr (`herdr`) or the desktop app's herdr-core (`hc`).
+    enum Source: String { case terminal, desktop }
+    private(set) static var source = Source.desktop
+    private static var terminalFocus: String?
+
+    /// Terminal herdr when it answers, else the desktop app. `defaults write com.djnesmith.herdr-notch source
+    /// terminal` (or `desktop`) forces one; `defaults delete com.djnesmith.herdr-notch source` goes back to automatic.
     static func snapshot() -> Result<[Agent], PollError> {
+        let forced = UserDefaults.standard.string(forKey: "source").flatMap(Source.init(rawValue:))
+        if forced != .desktop, let t = TerminalHerdr.snapshot() {
+            source = .terminal; terminalFocus = t.focused
+            return .success(t.agents)
+        }
+        if forced == .terminal {
+            source = .terminal; terminalFocus = nil
+            return .failure(PollError(message: "Terminal herdr isn't answering. Start herdr."))
+        }
+        source = .desktop
+        return desktopSnapshot()
+    }
+
+    /// `hc events --json` prints one full snapshot line covering every machine, then follows. We take that line.
+    static func desktopSnapshot() -> Result<[Agent], PollError> {
         guard FileManager.default.isExecutableFile(atPath: hc) else {
             return .failure(PollError(message: "Herdr's hc command isn't installed at ~/.local/bin/hc"))
         }
@@ -315,7 +339,10 @@ final class Store: ObservableObject {
     /// The last things an agent said, rebuilt into readable paragraphs: the terminal's hard-wrapped lines are joined
     /// back into sentences, and its borders, prompts, tool calls and status bars are left out. Newest last.
     static func readTail(_ address: String, keep: Int = 2) -> [String] {
-        guard let data = run(["read", address, "--lines", "20"], timeout: 6), let text = String(data: data, encoding: .utf8) else { return [] }
+        let data = source == .terminal ? TerminalHerdr.run(["agent", "read", address, "--lines", "20"], timeout: 6)
+                                       : run(["read", address, "--lines", "20"], timeout: 6)
+        // Terminal herdr answers a failed read with a JSON error instead of text.
+        guard let data, let text = String(data: data, encoding: .utf8), !text.hasPrefix("{\"error\"") else { return [] }
         let chrome = ["auto mode on", "to manage", "for shortcuts", "bypass permissions", "/restart to apply", "esc to interrupt",
                       "Ask Codex", "/clear to save", " default · ", "context left", "Compacted while idle", "still running in background",
                       "Skills restored", "Referenced file", "ctrl+o to expand", "ctrl+r to expand"]
@@ -363,16 +390,26 @@ final class Store: ObservableObject {
 
     func jump(to a: Agent) {
         expanded = false
+        let terminal = Self.source == .terminal
         queue.async {
-            for args in [["do", "space.select", "--id", a.spaceID], ["do", "pane.focus", "--terminal", a.id]] {
+            let commands: [(String, [String])]
+            if terminal {
+                commands = TerminalHerdr.path.map { [($0, ["workspace", "focus", a.spaceID]), ($0, ["agent", "focus", a.id])] } ?? []
+            } else {
+                commands = [["do", "space.select", "--id", a.spaceID], ["do", "pane.focus", "--terminal", a.id]].map { (Self.herdrApp, $0) }
+            }
+            for (executable, args) in commands {
                 let p = Process()
-                p.executableURL = URL(fileURLWithPath: Self.herdrApp)
+                p.executableURL = URL(fileURLWithPath: executable)
                 p.arguments = args
                 p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
                 try? p.run(); p.waitUntilExit()
             }
             DispatchQueue.main.async {
-                NSWorkspace.shared.runningApplications.first { $0.localizedName == "Herdr" }?.activate()
+                let apps = NSWorkspace.shared.runningApplications
+                let target = terminal ? apps.first { TerminalHerdr.terminals.contains($0.bundleIdentifier ?? "") }
+                                      : apps.first { $0.localizedName == "Herdr" }
+                target?.activate()
             }
         }
     }

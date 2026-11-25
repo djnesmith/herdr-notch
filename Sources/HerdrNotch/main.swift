@@ -20,6 +20,7 @@ if cli.contains("--dump") {
         let store = Store(persist: false)
         store.machineFilter = nil
         store.apply(agents)
+        print("source:", Store.source.rawValue)
         print("counts:", store.counts.map { "\($0.key.rawValue)=\($0.value)" }.sorted().joined(separator: " "))
         for machine in store.machines {
             print(machine.name)
