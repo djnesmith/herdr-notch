@@ -1,5 +1,15 @@
 # Herdr Notch
 
+<!-- fork: djnesmith — one block, so upstream merges stay easy -->
+## What this fork changes
+
+`djnesmith/herdr-notch` changes upstream Herdr Notch. Details and checks are in
+[FORK-FEATURES.md](FORK-FEATURES.md).
+
+- **Signed with the fork's own identity** and the hardened runtime, bundle ID
+  `com.djnesmith.herdr-notch`. Install with `./build.sh /Applications`.
+<!-- /fork -->
+
 Your [Herdr](https://herdr.dev) agents, in the MacBook notch. See what needs you, what is running and what just
 finished, across every workspace and every machine, without switching windows.
 
