@@ -50,7 +50,7 @@ notch, over the menu bar. They hid menu bar items next to the notch (such as the
 items that don't fit) and opened the panel when the pointer rested on them. Here the closed state
 is the hardware notch and nothing else: the window is the notch's own rectangle, nothing is drawn
 (the notch is the camera cutout, so nothing drawn there would show), and no status shows until the
-panel opens, except for the "needs you" strip (#5), which sits below the menu bar too. Only the notch
+panel opens, except for the "needs you" strip (#5) and the pill (#6), which sit below the menu bar. Only the notch
 opens the panel. The open panel floats below the menu bar and takes
 clicks only on itself, its detail card and the notch-wide strip above it.
 - Files: `Sources/HerdrNotch/NotchView.swift` (`RootView.size`), `Window.swift` (`Zones`, `smallFrame`,
@@ -89,3 +89,19 @@ while the pointer is on it. Several at once share one strip (4 rows, then "and N
 - Files: `Sources/HerdrNotch/NeedsYou.swift` (new), `Store.swift` (`strip`, `showStrip`), `Window.swift`
   (`stripTick`, `Zones.strip`), `NotchView.swift`, `Tests/HerdrNotchTests/NeedsYouTests.swift`
 - Check: `swift test` passes.
+
+### 6. A pill under the notch
+With nothing drawn while closed (#3), there was no sign the app was running. A small pill (28 x 5 pt,
+dark grey with a light rim) now hangs 2 pt below the notch, centered. It turns the "needs you" color
+while any agent is in herdr's `blocked` state. Clicking it opens the panel; hovering the notch still does.
+- Why there: the notch is the camera cutout, so nothing drawn inside it shows. The pill sits below the
+  menu bar and inside the notch's width, so it can't cover app menus, menu bar icons or the "<<" overflow
+  button, whatever the menu length. Its own small window (32 x 9 pt) is the only place it takes clicks.
+- Hidden while the panel is open, on a screen with no notch, and while the menu bar is hidden: when
+  "always hide the menu bar" (`_HIHideMenuBar`) is on, or when a window covers the whole display, menu bar
+  row included, which only full-screen apps and full-screen video do. It reads window bounds and layers
+  only (`CGWindowListCopyWindowInfo`, no titles, no pixels), once a second and on every Space or app switch.
+- Files: `Sources/HerdrNotch/Chin.swift` (new), `Window.swift` (`chinTick`, `layoutForScreen`, `open`),
+  `Tests/HerdrNotchTests/ChinTests.swift`
+- Check: `swift test` passes. The pill shows under the notch; a click opens the panel; it is gone in a
+  full-screen app.

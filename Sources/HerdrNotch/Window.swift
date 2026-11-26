@@ -39,6 +39,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var closedAt: Date?        // when the panel started closing
     var armed = true           // false after a click-through, until the pointer leaves the notch
     let pinned = ProcessInfo.processInfo.environment["HERDR_NOTCH_OPEN"] != nil   // testing: stay open
+    var hasNotch = false
+    var chin: Panel!           // fork: the pill under the notch
+    let chinView = ChinView()
 
     func applicationDidFinishLaunching(_ n: Notification) {
         layoutForScreen()
@@ -54,6 +57,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.contentView = NSHostingView(rootView: RootView(store: store, geo: geo))
         panel.orderFrontRegardless()
         store.start()
+        chin = Panel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        chin.isOpaque = false
+        chin.backgroundColor = .clear
+        chin.hasShadow = false
+        chin.level = panel.level
+        chin.collectionBehavior = panel.collectionBehavior
+        chin.isMovable = false
+        chin.hidesOnDeactivate = false
+        chin.contentView = chinView
+        chinView.onClick = { [weak self] in self?.open() }
+        let c = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.chinTick() }
+        RunLoop.main.add(c, forMode: .common)
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in self?.chinTick() }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] _ in self?.chinTick() }
+        chinTick()
         if pinned { open() }
         let t = Timer(timeInterval: 1.0 / 40, repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(t, forMode: .common)
@@ -62,12 +80,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.layoutForScreen()
             self.panel.contentView = NSHostingView(rootView: RootView(store: self.store, geo: self.geo))
             self.panel.setFrame(self.windowLarge ? self.largeFrame : self.smallFrame, display: true)
+            self.chinTick()
         }
     }
 
     func layoutForScreen() {
         screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main ?? NSScreen.screens[0]
         let top = screen.safeAreaInsets.top
+        hasNotch = top > 0 && screen.auxiliaryTopLeftArea != nil && screen.auxiliaryTopRightArea != nil
         if top > 0, let l = screen.auxiliaryTopLeftArea, let r = screen.auxiliaryTopRightArea {
             geo = Geometry(notchWidth: screen.frame.width - l.width - r.width, notchHeight: top)
         } else {
@@ -96,11 +116,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.announcement = nil
         store.strip = []
         windowLarge = true
+        chin.orderOut(nil)
         panel.setFrame(largeFrame, display: true)
         panel.ignoresMouseEvents = false
         store.poll()
         DispatchQueue.main.async { self.store.expanded = true }
         NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+    }
+
+    /// Fork: show the pill under the notch, unless the menu bar is hidden (full screen), the panel is open or
+    /// the screen has no notch. Its color follows whether an agent waits on you.
+    func chinTick() {
+        guard let frame = Chin.rect(screen: screen.frame, geo: geo, hasNotch: hasNotch) else { chin.orderOut(nil); return }
+        let id = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? CGMainDisplayID()
+        let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        let hidden = Chin.menuBarHidden(windows: windows, display: CGDisplayBounds(id),
+                                        alwaysHide: UserDefaults.standard.bool(forKey: "_HIHideMenuBar"))
+        chinView.waiting = (store.counts[.blocked] ?? 0) > 0
+        if hidden || store.expanded { chin.orderOut(nil); return }
+        if chin.frame != frame { chin.setFrame(frame, display: true) }
+        if !chin.isVisible { chin.orderFrontRegardless() }
     }
 
     func tick() {
@@ -130,6 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if Date().timeIntervalSince(closedAt!) > 0.45 {
                 windowLarge = false; closedAt = nil
                 panel.setFrame(smallFrame, display: true)
+                chinTick()
             }
         }
 

@@ -16,6 +16,8 @@
 - **A "needs you" strip:** when an agent starts waiting on you in a space you're not looking at, a
   small strip shows below the menu bar for 5 s; click it to jump there.
 - **An app icon** (upstream has none), drawn by `Support/make-icon.swift`.
+- **A pill under the notch:** shows the app is running; click it to open the panel. It turns red-ish while
+  an agent waits on you, and hides in full screen.
 <!-- /fork -->
 
 Your [Herdr](https://herdr.dev) agents, in the MacBook notch. See what needs you, what is running and what just
