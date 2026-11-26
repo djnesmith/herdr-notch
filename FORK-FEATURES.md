@@ -43,3 +43,16 @@ first and uses the desktop app only when it doesn't answer. Upstream's source st
   as Claude Code), `main.swift`, `Package.swift` (test target), `Tests/HerdrNotchTests/TerminalHerdrTests.swift`
 - Check: `swift test` passes. With terminal herdr running, `HerdrNotch --dump` prints `source: terminal`
   and counts its agents.
+
+### 3. The menu bar beside the notch stays usable
+The counters on each side of the notch (58 or 98 pt) are drawn over the menu bar. Upstream opened the
+panel when the pointer rested on them, and the open panel took clicks across its whole width in the
+menu bar row. That blocked the menu bar items next to the notch, such as the "<<" button for items
+that don't fit. Now only the hardware notch opens the panel. While the pointer is over a counter,
+the counters fold back into the notch so the menu bar under them shows; the closed window already
+passes every click through. The open panel takes clicks only on itself, its detail card and the
+notch-wide strip above it.
+- Files: `Sources/HerdrNotch/Window.swift` (`Zones`, `tick`), `Store.swift` (`peek`), `NotchView.swift`,
+  `Tests/HerdrNotchTests/ZonesTests.swift`
+- Check: `swift test` passes. Rest the pointer on a menu bar item next to the notch: the counters fold
+  away, the panel stays closed and the item works. Rest on the notch itself: the panel opens.

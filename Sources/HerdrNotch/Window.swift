@@ -5,6 +5,24 @@ import SwiftUI
 
 // MARK: - Window
 
+/// Where the pointer counts, in screen points. The ears sit over the menu bar, so they never take it:
+/// only the hardware notch opens the panel, the ears fold away while the pointer is over them, and
+/// the menu bar beside the notch keeps its clicks while the panel is open.
+struct Zones {
+    let screen: NSRect
+    let geo: Geometry
+
+    func top(_ w: CGFloat, _ h: CGFloat) -> NSRect { NSRect(x: screen.midX - w / 2, y: screen.maxY - h, width: w, height: h) }
+    var notch: NSRect { top(geo.notchWidth, geo.notchHeight) }
+    /// The column between the notch and the floating panel, so the pointer can travel down into it.
+    var bridge: NSRect { top(geo.notchWidth, geo.detach) }
+    func peeking(_ m: NSPoint, ear: CGFloat) -> Bool { top(geo.closedWidth(ear: ear), geo.notchHeight).contains(m) && !notch.contains(m) }
+    /// The open panel, which floats below the menu bar.
+    func panel(width: CGFloat, height: CGFloat) -> NSRect {
+        NSRect(x: screen.midX - width / 2, y: screen.maxY - geo.detach - height, width: width, height: height)
+    }
+}
+
 final class Panel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
@@ -88,16 +106,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func tick() {
         let m = NSEvent.mouseLocation
-        let notch = topRect(width: geo.closedWidth(ear: store.hasEars ? store.earWidth : 0), height: geo.notchHeight)
+        let z = Zones(screen: screen.frame, geo: geo)
+        let notch = z.notch
 
         if store.expanded {
             if pinned { return }
-            // Includes the strip between the notch and the floating panel, so the pointer can travel down into it.
-            let body = topRect(width: store.panelWidth, height: geo.detach + store.panelHeight(geo))
+            let body = z.panel(width: store.panelWidth, height: store.panelHeight(geo))
             let onCard = store.hoveredID != nil && cardRect.insetBy(dx: -6, dy: -10).contains(m)
-            let inside = body.insetBy(dx: -14, dy: -14).contains(m) || onCard
-            // Clicks outside the drawn shapes go to whatever is underneath.
-            panel.ignoresMouseEvents = !(body.contains(m) || onCard)
+            let inside = body.insetBy(dx: -14, dy: -8).contains(m) || z.bridge.contains(m) || onCard
+            // Clicks outside the drawn shapes go to whatever is underneath, including the menu bar beside the notch.
+            panel.ignoresMouseEvents = !(body.contains(m) || z.bridge.contains(m) || onCard)
             if inside || NSEvent.pressedMouseButtons != 0 { leftAt = nil; return }
             if leftAt == nil { leftAt = Date() }
             if Date().timeIntervalSince(leftAt!) > 0.28 { leftAt = nil; store.expanded = false }
@@ -115,6 +133,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 panel.setFrame(smallFrame, display: true)
             }
         }
+
+        let peek = z.peeking(m, ear: store.hasEars ? store.earWidth : 0)
+        if store.peek != peek { store.peek = peek }
 
         if !notch.contains(m) { armed = true; enteredAt = nil; return }
         guard armed, NSEvent.pressedMouseButtons == 0 else { return }

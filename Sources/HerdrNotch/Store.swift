@@ -32,6 +32,7 @@ final class Store: ObservableObject {
     @Published var newDone = 0                          // finished since you last opened the panel
     @Published var offline: [String] = []               // machines Herdr has lost its connection to
     @Published var waitingSince: Double?                // when the longest-waiting agent started needing you (ms)
+    @Published var peek = false                         // pointer over an ear: fold the ears so the menu bar under them shows
 
     let persist: Bool
     let recorder: Recorder

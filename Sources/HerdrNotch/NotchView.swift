@@ -89,8 +89,8 @@ struct RootView: View {
 
     var body: some View {
         let open = store.expanded
-        let note = open ? nil : store.announcement
-        let ear = note != nil ? Geometry.wideEar : (store.hasEars ? store.earWidth : 0)
+        let note = open || store.peek ? nil : store.announcement
+        let ear = store.peek ? 0 : note != nil ? Geometry.wideEar : (store.hasEars ? store.earWidth : 0)
         let w = open ? store.panelWidth : geo.closedWidth(ear: ear)
         let h = open ? store.panelHeight(geo) : geo.notchHeight + (note == nil ? 0 : Geometry.announceHeight)
         let closedRadius: CGFloat = note == nil ? 10 : 15
