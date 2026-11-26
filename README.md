@@ -13,6 +13,7 @@
   (or `terminal`) forces one. Still read and focus only.
 - **Nothing over the menu bar while closed:** no counters or trace beside the notch; hover the notch
   to open the panel. Menu bar items next to the notch stay visible and clickable.
+- **An app icon** (upstream has none), drawn by `Support/make-icon.swift`.
 <!-- /fork -->
 
 Your [Herdr](https://herdr.dev) agents, in the MacBook notch. See what needs you, what is running and what just

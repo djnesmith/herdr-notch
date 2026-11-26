@@ -10,6 +10,8 @@ swift build -c release
 mkdir -p "$APP/Contents/MacOS"
 cp "$(swift build -c release --show-bin-path)/HerdrNotch" "$APP/Contents/MacOS/HerdrNotch"
 cp Support/Info.plist "$APP/Contents/Info.plist"
+mkdir -p "$APP/Contents/Resources"
+cp Support/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"   # fork: the app icon (Support/make-icon.swift)
 # Fork: sign with $SIGN_IDENTITY, else this Mac's one "Apple Development" identity, with the hardened runtime.
 # A failed signature stops the build. SIGN_IDENTITY=- gives an ad hoc build.
 if [ -z "$SIGN_IDENTITY" ]; then

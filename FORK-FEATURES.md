@@ -59,3 +59,12 @@ clicks only on itself, its detail card and the notch-wide strip above it.
 - Check: `swift test` passes (`testClosedNotchIsTheHardwareNotchWhateverTheAgentsDo`). With agents
   running, nothing shows beside the notch; menu bar items next to it click normally; resting on the
   notch opens the panel.
+
+### 4. App icon
+Upstream ships no icon, so Finder, Spotlight and System Settings showed the generic app icon. The
+fork's icon is original: a dark rounded square with the notch at its top edge and three dots in the
+app's status colors. `Support/make-icon.swift` draws it; `Support/AppIcon.icns` is its output, which
+`build.sh` copies into `Contents/Resources`, and `Support/Info.plist` names it (`CFBundleIconFile`).
+- Rebuild the icon: `swift Support/make-icon.swift && iconutil -c icns Support/AppIcon.iconset -o Support/AppIcon.icns && rm -r Support/AppIcon.iconset`
+- Files: `Support/make-icon.swift`, `Support/AppIcon.icns`, `Support/Info.plist`, `build.sh`
+- Check: `ls "/Applications/Herdr Notch.app/Contents/Resources/AppIcon.icns"`; Finder shows the icon.

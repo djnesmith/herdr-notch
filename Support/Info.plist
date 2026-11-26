@@ -5,6 +5,7 @@
 <key>CFBundleIdentifier</key><string>com.djnesmith.herdr-notch</string>
 <key>CFBundleExecutable</key><string>HerdrNotch</string>
 <key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundleShortVersionString</key><string>0.1</string>
 <key>LSUIElement</key><true/>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
