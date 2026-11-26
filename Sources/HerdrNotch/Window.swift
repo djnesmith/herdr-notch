@@ -5,9 +5,8 @@ import SwiftUI
 
 // MARK: - Window
 
-/// Where the pointer counts, in screen points. The ears sit over the menu bar, so they never take it:
-/// only the hardware notch opens the panel, the ears fold away while the pointer is over them, and
-/// the menu bar beside the notch keeps its clicks while the panel is open.
+/// Where the pointer counts, in screen points. Only the hardware notch opens the panel, and the menu
+/// bar beside the notch keeps its clicks while the panel is open.
 struct Zones {
     let screen: NSRect
     let geo: Geometry
@@ -16,7 +15,6 @@ struct Zones {
     var notch: NSRect { top(geo.notchWidth, geo.notchHeight) }
     /// The column between the notch and the floating panel, so the pointer can travel down into it.
     var bridge: NSRect { top(geo.notchWidth, geo.detach) }
-    func peeking(_ m: NSPoint, ear: CGFloat) -> Bool { top(geo.closedWidth(ear: ear), geo.notchHeight).contains(m) && !notch.contains(m) }
     /// The open panel, which floats below the menu bar.
     func panel(width: CGFloat, height: CGFloat) -> NSRect {
         NSRect(x: screen.midX - width / 2, y: screen.maxY - geo.detach - height, width: width, height: height)
@@ -78,10 +76,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func topRect(width: CGFloat, height: CGFloat) -> NSRect {
         NSRect(x: screen.frame.midX - width / 2, y: screen.frame.maxY - height, width: width, height: height)
     }
-    /// The window while closed: just the notch and its two counters.
-    var smallFrame: NSRect {
-        topRect(width: geo.closedWidth(ear: Geometry.wideEar) + 16, height: geo.notchHeight + Geometry.announceHeight + 10)
-    }
+    /// The window while closed: the hardware notch only (fork: nothing is drawn over the menu bar).
+    var smallFrame: NSRect { topRect(width: geo.notchWidth, height: geo.notchHeight) }
     /// The window while open: the panel, a detail card's width on each side so the panel stays centred, and shadow room.
     var largeFrame: NSRect {
         topRect(width: Geometry.traceWidth + 2 * (Geometry.cardGap + Geometry.cardWidth + Geometry.margin),
@@ -133,9 +129,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 panel.setFrame(smallFrame, display: true)
             }
         }
-
-        let peek = z.peeking(m, ear: store.hasEars ? store.earWidth : 0)
-        if store.peek != peek { store.peek = peek }
 
         if !notch.contains(m) { armed = true; enteredAt = nil; return }
         guard armed, NSEvent.pressedMouseButtons == 0 else { return }

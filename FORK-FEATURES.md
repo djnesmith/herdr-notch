@@ -44,15 +44,18 @@ first and uses the desktop app only when it doesn't answer. Upstream's source st
 - Check: `swift test` passes. With terminal herdr running, `HerdrNotch --dump` prints `source: terminal`
   and counts its agents.
 
-### 3. The menu bar beside the notch stays usable
-The counters on each side of the notch (58 or 98 pt) are drawn over the menu bar. Upstream opened the
-panel when the pointer rested on them, and the open panel took clicks across its whole width in the
-menu bar row. That blocked the menu bar items next to the notch, such as the "<<" button for items
-that don't fit. Now only the hardware notch opens the panel. While the pointer is over a counter,
-the counters fold back into the notch so the menu bar under them shows; the closed window already
-passes every click through. The open panel takes clicks only on itself, its detail card and the
-notch-wide strip above it.
-- Files: `Sources/HerdrNotch/Window.swift` (`Zones`, `tick`), `Store.swift` (`peek`), `NotchView.swift`,
-  `Tests/HerdrNotchTests/ZonesTests.swift`
-- Check: `swift test` passes. Rest the pointer on a menu bar item next to the notch: the counters fold
-  away, the panel stays closed and the item works. Rest on the notch itself: the panel opens.
+### 3. Nothing over the menu bar while closed
+Upstream draws counters, a small last-hour trace and a one-line announcement beside and under the
+notch, over the menu bar. They hid menu bar items next to the notch (such as the "<<" button for
+items that don't fit) and opened the panel when the pointer rested on them. Here the closed state
+is the hardware notch and nothing else: the window is the notch's own rectangle, nothing is drawn
+(the notch is the camera cutout, so nothing drawn there would show), and no status shows until the
+panel opens. Only the notch opens the panel. The open panel floats below the menu bar and takes
+clicks only on itself, its detail card and the notch-wide strip above it.
+- Files: `Sources/HerdrNotch/NotchView.swift` (`RootView.size`), `Window.swift` (`Zones`, `smallFrame`,
+  `tick`), `main.swift` (render size), `Tests/HerdrNotchTests/ZonesTests.swift`
+- After an upstream merge, keep `RootView.size` returning the notch size while closed, whatever upstream
+  adds to the closed view.
+- Check: `swift test` passes (`testClosedNotchIsTheHardwareNotchWhateverTheAgentsDo`). With agents
+  running, nothing shows beside the notch; menu bar items next to it click normally; resting on the
+  notch opens the panel.

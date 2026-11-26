@@ -67,7 +67,7 @@ if let i = cli.firstIndex(of: "--render"), cli.count > i + 1 {
             store.tail = demo ? Demo.tail : Store.readTail(w.top.id)
         }
         let size = store.expanded ? NSSize(width: wide, height: tall)
-                                  : NSSize(width: geo.closedWidth(ear: Geometry.wideEar) + 16, height: 76)
+                                  : NSSize(width: geo.notchWidth, height: geo.notchHeight)
         let view = NSHostingView(rootView: RootView(store: store, geo: geo).background(backdrop))
         view.frame = NSRect(origin: .zero, size: size)
         let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)

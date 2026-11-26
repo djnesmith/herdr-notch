@@ -11,8 +11,8 @@
 - **Terminal herdr:** shows the agents running in the `herdr` TUI, not only the desktop app's. It
   picks whichever answers, terminal first; `defaults write com.djnesmith.herdr-notch source desktop`
   (or `terminal`) forces one. Still read and focus only.
-- **Leaves the menu bar beside the notch alone:** only the notch itself opens the panel, the counters
-  fold away while the pointer is over them, and clicks there reach the menu bar.
+- **Nothing over the menu bar while closed:** no counters or trace beside the notch; hover the notch
+  to open the panel. Menu bar items next to the notch stay visible and clickable.
 <!-- /fork -->
 
 Your [Herdr](https://herdr.dev) agents, in the MacBook notch. See what needs you, what is running and what just

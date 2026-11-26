@@ -82,21 +82,21 @@ struct Count: View {
 struct RootView: View {
     @ObservedObject var store: Store
     let geo: Geometry
-    @State private var bump = false
     @Namespace private var rows
 
-    var leftStates: [AgentState] { [.blocked, .working].filter { store.counts[$0, default: 0] > 0 } }
+    /// Fork: closed, the app is the hardware notch and nothing else. No counters, trace or announcement
+    /// beside or under it, whatever the agents are doing: those sat over the menu bar.
+    static func size(open: Bool, store: Store, geo: Geometry) -> CGSize {
+        open ? CGSize(width: store.panelWidth, height: store.panelHeight(geo)) : CGSize(width: geo.notchWidth, height: geo.notchHeight)
+    }
 
     var body: some View {
         let open = store.expanded
-        let note = open || store.peek ? nil : store.announcement
-        let ear = store.peek ? 0 : note != nil ? Geometry.wideEar : (store.hasEars ? store.earWidth : 0)
-        let w = open ? store.panelWidth : geo.closedWidth(ear: ear)
-        let h = open ? store.panelHeight(geo) : geo.notchHeight + (note == nil ? 0 : Geometry.announceHeight)
-        let closedRadius: CGFloat = note == nil ? 10 : 15
+        let size = Self.size(open: open, store: store, geo: geo)
+        let w = size.width, h = size.height
+        let closedRadius: CGFloat = 10
         ZStack(alignment: .top) {
             ZStack(alignment: .top) {
-                closed(ear: ear, note: note).opacity(open ? 0 : 1)
                 if open {
                     panel.transition(.asymmetric(
                         insertion: .frost.combined(with: .scale(scale: 0.96, anchor: .top)).animation(Motion.open.delay(0.05)),
@@ -109,7 +109,7 @@ struct RootView: View {
             .overlay(NotchShape(radius: open ? 22 : closedRadius, topRadius: open ? 22 : 0).strokeBorder(Color.white.opacity(open ? 0.12 : 0), lineWidth: 1))
             .compositingGroup()
             .shadow(color: .black.opacity(open ? 0.3 : 0), radius: 16, y: 8)
-            .scaleEffect(bump ? 1.06 : 1, anchor: .top)
+            .opacity(open ? 1 : 0)
             .offset(y: open ? geo.detach : 0)
 
             if open, let space = store.hovered {
@@ -123,51 +123,6 @@ struct RootView: View {
         .animation(Motion.open, value: h)
         .animation(Motion.open, value: w)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .onChange(of: store.announcement) { if $0 != nil { nudge() } }
-    }
-
-    /// A small bounce when something new needs attention or finishes, so it catches the eye without taking focus.
-    func nudge() {
-        guard !store.expanded, !Motion.reduced else { return }
-        withAnimation(.spring(response: 0.22, dampingFraction: 0.5)) { bump = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { bump = false }
-        }
-    }
-
-    /// The closed notch: what needs you and what is running on the left, what is new on the right,
-    /// and for a few seconds after something changes, one line underneath saying what.
-    func closed(ear: CGFloat, note: Store.Announcement?) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    if store.error != nil {
-                        Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10)).foregroundColor(.orange)
-                    }
-                    ForEach(leftStates, id: \.self) { s in
-                        Count(state: s, n: store.counts[s]!, detail: s == .blocked ? store.waitingSince.map(ago) : nil)
-                    }
-                }.frame(width: ear)
-                Spacer().frame(width: geo.notchWidth)
-                HStack(spacing: 8) {
-                    if store.newDone > 0 { Count(state: .done, n: store.newDone, detail: nil) }
-                    MiniTrace(trace: store.mini)
-                    if !store.offline.isEmpty {
-                        Image(systemName: "bolt.horizontal.circle").font(.system(size: 11, weight: .medium)).foregroundColor(.orange)
-                    }
-                }.frame(width: ear)
-            }
-            .frame(height: geo.notchHeight)
-            if let note {
-                HStack(spacing: 7) {
-                    Mark(state: note.state, size: 8)
-                    Text(note.text).font(.system(size: 12.5, weight: .medium)).foregroundColor(Ink.primary).lineLimit(1)
-                }
-                .padding(.horizontal, 14).frame(height: Geometry.announceHeight, alignment: .top).padding(.top, 2)
-                .id(note.id).transition(.frost)
-            }
-        }
-        .opacity(ear > 0 ? 1 : 0)
     }
 
     var panel: some View {

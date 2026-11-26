@@ -12,12 +12,22 @@ final class ZonesTests: XCTestCase {
         XCTAssertFalse(z.notch.contains(NSPoint(x: 500, y: 760)))       // below the menu bar
     }
 
-    func testEarsFoldWhileThePointerIsOverThem() {
-        XCTAssertTrue(z.peeking(NSPoint(x: 380, y: 785), ear: 58))
-        XCTAssertTrue(z.peeking(NSPoint(x: 650, y: 785), ear: 58))
-        XCTAssertFalse(z.peeking(NSPoint(x: 500, y: 785), ear: 58))     // the notch itself
-        XCTAssertFalse(z.peeking(NSPoint(x: 300, y: 785), ear: 58))     // past the ear
-        XCTAssertFalse(z.peeking(NSPoint(x: 380, y: 785), ear: 0))      // no ears drawn
+    @MainActor
+    func testClosedNotchIsTheHardwareNotchWhateverTheAgentsDo() {
+        let store = Store(persist: false)
+        let quiet = RootView.size(open: false, store: store, geo: z.geo)
+        store.counts = [.blocked: 2, .working: 5, .done: 3]
+        store.newDone = 4
+        store.waitingSince = 1_000
+        store.offline = ["other-mac"]
+        store.error = "made-up error"
+        store.announcement = .init(text: "alpha needs you", state: .blocked)
+        let busy = RootView.size(open: false, store: store, geo: z.geo)
+        for size in [quiet, busy] {
+            XCTAssertEqual(size.width, 200)
+            XCTAssertEqual(size.height, 30)
+        }
+        XCTAssertEqual(RootView.size(open: true, store: store, geo: z.geo).width, store.panelWidth)
     }
 
     func testOpenPanelLeavesTheMenuBarBesideTheNotch() {
