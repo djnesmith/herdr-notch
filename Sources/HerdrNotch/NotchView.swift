@@ -118,7 +118,14 @@ struct RootView: View {
                     .offset(x: store.panelWidth / 2 + Geometry.cardGap + Geometry.cardWidth / 2, y: geo.detach)
                     .transition(.frost.combined(with: .offset(x: -12)).combined(with: .scale(scale: 0.97, anchor: .leading)))
             }
+
+            if !open, !store.strip.isEmpty {             // fork: "needs you", below the menu bar
+                NeedsYouStrip(store: store)
+                    .offset(y: geo.detach)
+                    .transition(.frost.combined(with: .scale(scale: 0.96, anchor: .top)))
+            }
         }
+        .animation(Motion.open, value: store.strip.map(\.id))
         .animation(open ? Motion.open : Motion.close, value: open)
         .animation(Motion.open, value: h)
         .animation(Motion.open, value: w)

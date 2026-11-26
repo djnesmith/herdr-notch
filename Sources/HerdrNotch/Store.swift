@@ -32,6 +32,9 @@ final class Store: ObservableObject {
     @Published var newDone = 0                          // finished since you last opened the panel
     @Published var offline: [String] = []               // machines Herdr has lost its connection to
     @Published var waitingSince: Double?                // when the longest-waiting agent started needing you (ms)
+    @Published var strip: [Agent] = []                  // fork: agents that just started needing you (NeedsYou.swift)
+    var stripUntil = Date.distantPast
+    private var needsYou = NeedsYou()
 
     let persist: Bool
     let recorder: Recorder
@@ -139,6 +142,7 @@ final class Store: ObservableObject {
                     self.recorder.recordYou(spaceID: focus, space: name, now: now)
                     self.agents = agents; self.error = nil; self.rebuild()
                     self.announce(changes)
+                    self.showStrip(self.needsYou.update(agents, focused: focus))
                 case .failure(let e): self.error = e.message
                 }
             }
@@ -177,6 +181,14 @@ final class Store: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             if self.announcement == note { withAnimation(Motion.close) { self.announcement = nil } }
         }
+    }
+
+    /// Fork: put agents that just started needing you on the strip under the notch, for a few seconds.
+    func showStrip(_ fresh: [Agent]) {
+        guard !fresh.isEmpty, !expanded else { return }
+        let ids = Set(fresh.map(\.id))
+        strip = strip.filter { !ids.contains($0.id) } + fresh
+        stripUntil = Date().addingTimeInterval(Strip.seconds)
     }
 
     /// Opening the panel counts as looking: what finished before now is no longer news.
@@ -390,6 +402,7 @@ final class Store: ObservableObject {
 
     func jump(to a: Agent) {
         expanded = false
+        strip = []
         let terminal = Self.source == .terminal
         queue.async {
             let commands: [(String, [String])]

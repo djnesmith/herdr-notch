@@ -15,6 +15,8 @@ struct Zones {
     var notch: NSRect { top(geo.notchWidth, geo.notchHeight) }
     /// The column between the notch and the floating panel, so the pointer can travel down into it.
     var bridge: NSRect { top(geo.notchWidth, geo.detach) }
+    /// The "needs you" strip, in the open panel's place below the menu bar.
+    func strip(_ size: CGSize) -> NSRect { panel(width: size.width, height: size.height) }
     /// The open panel, which floats below the menu bar.
     func panel(width: CGFloat, height: CGFloat) -> NSRect {
         NSRect(x: screen.midX - width / 2, y: screen.maxY - geo.detach - height, width: width, height: height)
@@ -92,6 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func open() {
         closedAt = nil; leftAt = nil
         store.announcement = nil
+        store.strip = []
         windowLarge = true
         panel.setFrame(largeFrame, display: true)
         panel.ignoresMouseEvents = false
@@ -130,9 +133,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        if stripTick(m, z) { return }
         if !notch.contains(m) { armed = true; enteredAt = nil; return }
         guard armed, NSEvent.pressedMouseButtons == 0 else { return }
         if enteredAt == nil { enteredAt = Date() }
         if Date().timeIntervalSince(enteredAt!) > 0.07 { enteredAt = nil; open() }   // a short dwell, so passing over doesn't open it
+    }
+
+    /// Fork: while the "needs you" strip shows, the window is large enough to hold it, and takes clicks only
+    /// on the strip itself. It goes after a few seconds, but not while the pointer is on it.
+    /// Returns true while the strip shows and the pointer is on it, so resting there doesn't open the panel.
+    func stripTick(_ m: NSPoint, _ z: Zones) -> Bool {
+        guard !windowLarge else { return false }
+        let rect = z.strip(Strip.size(store.strip))
+        let on = !store.strip.isEmpty && rect.contains(m)
+        if !on, Date() > store.stripUntil { store.strip = [] }
+        if store.strip.isEmpty {                   // gone (timed out, or a click jumped): back to the notch only
+            if panel.frame != smallFrame { panel.ignoresMouseEvents = true; panel.setFrame(smallFrame, display: true) }
+            return false
+        }
+        if panel.frame != largeFrame { panel.setFrame(largeFrame, display: true) }
+        panel.ignoresMouseEvents = !on
+        return on
     }
 }

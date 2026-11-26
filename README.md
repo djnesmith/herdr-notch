@@ -13,6 +13,8 @@
   (or `terminal`) forces one. Still read and focus only.
 - **Nothing over the menu bar while closed:** no counters or trace beside the notch; hover the notch
   to open the panel. Menu bar items next to the notch stay visible and clickable.
+- **A "needs you" strip:** when an agent starts waiting on you in a space you're not looking at, a
+  small strip shows below the menu bar for 5 s; click it to jump there.
 - **An app icon** (upstream has none), drawn by `Support/make-icon.swift`.
 <!-- /fork -->
 

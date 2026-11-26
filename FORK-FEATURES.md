@@ -50,7 +50,8 @@ notch, over the menu bar. They hid menu bar items next to the notch (such as the
 items that don't fit) and opened the panel when the pointer rested on them. Here the closed state
 is the hardware notch and nothing else: the window is the notch's own rectangle, nothing is drawn
 (the notch is the camera cutout, so nothing drawn there would show), and no status shows until the
-panel opens. Only the notch opens the panel. The open panel floats below the menu bar and takes
+panel opens, except for the "needs you" strip (#5), which sits below the menu bar too. Only the notch
+opens the panel. The open panel floats below the menu bar and takes
 clicks only on itself, its detail card and the notch-wide strip above it.
 - Files: `Sources/HerdrNotch/NotchView.swift` (`RootView.size`), `Window.swift` (`Zones`, `smallFrame`,
   `tick`), `main.swift` (render size), `Tests/HerdrNotchTests/ZonesTests.swift`
@@ -68,3 +69,23 @@ app's status colors. `Support/make-icon.swift` draws it; `Support/AppIcon.icns` 
 - Rebuild the icon: `swift Support/make-icon.swift && iconutil -c icns Support/AppIcon.iconset -o Support/AppIcon.icns && rm -r Support/AppIcon.iconset`
 - Files: `Support/make-icon.swift`, `Support/AppIcon.icns`, `Support/Info.plist`, `build.sh`
 - Check: `ls "/Applications/Herdr Notch.app/Contents/Resources/AppIcon.icns"`; Finder shows the icon.
+
+### 5. A "needs you" strip
+The closed notch shows nothing (#3), so when an agent starts waiting on David a small strip drops in
+below the menu bar, where the open panel sits, with one row per agent: "<space> needs you". Clicking a
+row jumps there (the same `workspace focus` + `agent focus` as the panel). It goes after 5 s, but not
+while the pointer is on it. Several at once share one strip (4 rows, then "and N more"). No sound.
+- Trigger: an agent entering herdr's `blocked` state. herdr sets it from on-screen prompts (its built-in
+  rules include `permission_prompt`, `question_prompt`, `trust_prompt`, `approval_prompt`,
+  `tool_permission`). `done`, `idle`, `working` and `unknown` never fire. Once per transition: no
+  repeat while it stays blocked; again only after it leaves and comes back. Agents already blocked when
+  the app starts don't fire.
+- Not for the space in front of you: herdr's focused workspace while a terminal app is in front. If
+  focus can't be read (another app in front), it shows.
+- Only agents in `herdr agent list` can fire. Workspaces that only view another machine over ssh (they
+  read `unknown`) have no agents there, so they never fire.
+- Nothing goes in the menu bar row: the strip's top edge is below it, and while it shows the window
+  takes clicks only on the strip.
+- Files: `Sources/HerdrNotch/NeedsYou.swift` (new), `Store.swift` (`strip`, `showStrip`), `Window.swift`
+  (`stripTick`, `Zones.strip`), `NotchView.swift`, `Tests/HerdrNotchTests/NeedsYouTests.swift`
+- Check: `swift test` passes.
