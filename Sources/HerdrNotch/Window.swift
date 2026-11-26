@@ -39,6 +39,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var closedAt: Date?        // when the panel started closing
     var armed = true           // false after a click-through, until the pointer leaves the notch
     let pinned = ProcessInfo.processInfo.environment["HERDR_NOTCH_OPEN"] != nil   // testing: stay open
+    var icon: StatusIcon!
+    var clickOpened = false    // fork: opened from the menu bar icon, and the pointer hasn't reached the panel yet
+    var wasPressed = false
 
     func applicationDidFinishLaunching(_ n: Notification) {
         layoutForScreen()
@@ -54,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.contentView = NSHostingView(rootView: RootView(store: store, geo: geo))
         panel.orderFrontRegardless()
         store.start()
+        icon = StatusIcon(store: store, target: self, action: #selector(iconClicked))
         if pinned { open() }
         let t = Timer(timeInterval: 1.0 / 40, repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(t, forMode: .common)
@@ -103,6 +107,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
     }
 
+    @objc func iconClicked() {
+        if store.expanded { clickOpened = false; store.expanded = false; return }
+        open()
+        clickOpened = true
+        wasPressed = true
+    }
+
     func tick() {
         let m = NSEvent.mouseLocation
         let z = Zones(screen: screen.frame, geo: geo)
@@ -115,6 +126,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let inside = body.insetBy(dx: -14, dy: -8).contains(m) || z.bridge.contains(m) || onCard
             // Clicks outside the drawn shapes go to whatever is underneath, including the menu bar beside the notch.
             panel.ignoresMouseEvents = !(body.contains(m) || z.bridge.contains(m) || onCard)
+            if clickOpened {
+                let pressed = NSEvent.pressedMouseButtons != 0
+                defer { wasPressed = pressed }
+                switch ClickOpen.next(inside: inside, onIcon: icon.frame.contains(m), pressed: pressed, wasPressed: wasPressed) {
+                case .stay: return
+                case .close: clickOpened = false; store.expanded = false; return
+                case .hover: clickOpened = false
+                }
+            }
             if inside || NSEvent.pressedMouseButtons != 0 { leftAt = nil; return }
             if leftAt == nil { leftAt = Date() }
             if Date().timeIntervalSince(leftAt!) > 0.28 { leftAt = nil; store.expanded = false }

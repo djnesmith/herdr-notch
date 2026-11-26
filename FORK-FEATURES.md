@@ -50,7 +50,8 @@ notch, over the menu bar. They hid menu bar items next to the notch (such as the
 items that don't fit) and opened the panel when the pointer rested on them. Here the closed state
 is the hardware notch and nothing else: the window is the notch's own rectangle, nothing is drawn
 (the notch is the camera cutout, so nothing drawn there would show), and no status shows until the
-panel opens, except for the "needs you" strip (#5), which sits below the menu bar too. Only the notch
+panel opens, except for the "needs you" strip (#5), which sits below the menu bar too, and the menu
+bar icon (#6), which the system places among the other status items. Only the notch
 opens the panel. The open panel floats below the menu bar and takes
 clicks only on itself, its detail card and the notch-wide strip above it.
 - Files: `Sources/HerdrNotch/NotchView.swift` (`RootView.size`), `Window.swift` (`Zones`, `smallFrame`,
@@ -89,3 +90,19 @@ while the pointer is on it. Several at once share one strip (4 rows, then "and N
 - Files: `Sources/HerdrNotch/NeedsYou.swift` (new), `Store.swift` (`strip`, `showStrip`), `Window.swift`
   (`stripTick`, `Zones.strip`), `NotchView.swift`, `Tests/HerdrNotchTests/NeedsYouTests.swift`
 - Check: `swift test` passes.
+
+### 6. A menu bar icon
+With nothing drawn while closed (#3), there was no sign the app was running. A normal status item
+(`NSStatusItem`) now shows a small notch icon; clicking it opens the panel, and clicking it again closes
+it. A number beside it counts agents in herdr's `blocked` state; nothing shows when there are none.
+It is a status item and not a mark beside the notch because the system places status items, so it
+can't cover an app menu, another icon or the system's "<<" overflow button (macOS 27's MenuBarAgent),
+whatever the menu length. The space just left of the notch belongs to app menus, so a mark there
+could cover a long menu.
+- An icon-opened panel stays open until the pointer reaches it (then the usual hover rules apply) or
+  a new click lands somewhere else. Clicks pass through to whatever is under them as before.
+- If the menu bar is full, the system may tuck the icon behind "<<" like any other status item.
+  ⌘-drag it to a better place; `autosaveName` keeps its position.
+- Files: `Sources/HerdrNotch/StatusItem.swift` (new), `Window.swift` (`iconClicked`, `tick`),
+  `Tests/HerdrNotchTests/StatusIconTests.swift`
+- Check: `swift test` passes. The icon shows in the menu bar; a click opens the panel.
