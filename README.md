@@ -11,13 +11,13 @@
 - **Terminal herdr:** shows the agents running in the `herdr` TUI, not only the desktop app's. It
   picks whichever answers, terminal first; `defaults write com.djnesmith.herdr-notch source desktop`
   (or `terminal`) forces one. Still read and focus only.
-- **Nothing over the menu bar while closed:** no counters or trace beside the notch; hover the notch
-  to open the panel. Menu bar items next to the notch stay visible and clickable.
+- **Nothing right of the notch while closed:** no counters or trace there; hover the notch to open the
+  panel. Menu bar icons and "<<" next to the notch stay visible and clickable.
 - **A "needs you" strip:** when an agent starts waiting on you in a space you're not looking at, a
   small strip shows below the menu bar for 5 s; click it to jump there.
 - **An app icon** (upstream has none), drawn by `Support/make-icon.swift`.
-- **A pill under the notch:** shows the app is running; click it to open the panel. It turns red-ish while
-  an agent waits on you, and hides in full screen.
+- **A dot left of the notch:** shows the app is running; click it to open the panel. Red with a count
+  while agents wait on you, amber while they work. Nothing is drawn right of the notch.
 <!-- /fork -->
 
 Your [Herdr](https://herdr.dev) agents, in the MacBook notch. See what needs you, what is running and what just

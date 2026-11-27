@@ -40,8 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var armed = true           // false after a click-through, until the pointer leaves the notch
     let pinned = ProcessInfo.processInfo.environment["HERDR_NOTCH_OPEN"] != nil   // testing: stay open
     var hasNotch = false
-    var chin: Panel!           // fork: the pill under the notch
-    let chinView = ChinView()
+    var mark: Panel!           // fork: the mark left of the notch
+    let markView = LeftMarkView()
 
     func applicationDidFinishLaunching(_ n: Notification) {
         layoutForScreen()
@@ -57,21 +57,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.contentView = NSHostingView(rootView: RootView(store: store, geo: geo))
         panel.orderFrontRegardless()
         store.start()
-        chin = Panel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        chin.isOpaque = false
-        chin.backgroundColor = .clear
-        chin.hasShadow = false
-        chin.level = panel.level
-        chin.collectionBehavior = panel.collectionBehavior
-        chin.isMovable = false
-        chin.hidesOnDeactivate = false
-        chin.contentView = chinView
-        chinView.onClick = { [weak self] in self?.open() }
-        let c = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.chinTick() }
+        mark = Panel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        mark.isOpaque = false
+        mark.backgroundColor = .clear
+        mark.hasShadow = false
+        mark.level = panel.level
+        mark.collectionBehavior = panel.collectionBehavior
+        mark.isMovable = false
+        mark.hidesOnDeactivate = false
+        mark.contentView = markView
+        markView.onClick = { [weak self] in self?.open() }
+        let c = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.markTick() }
         RunLoop.main.add(c, forMode: .common)
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in self?.chinTick() }
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] _ in self?.chinTick() }
-        chinTick()
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in self?.markTick() }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] _ in self?.markTick() }
+        markTick()
         if pinned { open() }
         let t = Timer(timeInterval: 1.0 / 40, repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(t, forMode: .common)
@@ -80,7 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.layoutForScreen()
             self.panel.contentView = NSHostingView(rootView: RootView(store: self.store, geo: self.geo))
             self.panel.setFrame(self.windowLarge ? self.largeFrame : self.smallFrame, display: true)
-            self.chinTick()
+            self.markTick()
         }
     }
 
@@ -116,7 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.announcement = nil
         store.strip = []
         windowLarge = true
-        chin.orderOut(nil)
+        mark.orderOut(nil)
         panel.setFrame(largeFrame, display: true)
         panel.ignoresMouseEvents = false
         store.poll()
@@ -124,18 +124,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
     }
 
-    /// Fork: show the pill under the notch, unless the menu bar is hidden (full screen), the panel is open or
-    /// the screen has no notch. Its color follows whether an agent waits on you.
-    func chinTick() {
-        guard let frame = Chin.rect(screen: screen.frame, geo: geo, hasNotch: hasNotch) else { chin.orderOut(nil); return }
+    /// Fork: show the mark left of the notch, unless the menu bar is hidden (full screen), the panel is open or
+    /// the screen has no notch. Its color follows the agents.
+    func markTick() {
+        guard let frame = LeftMark.rect(screen: screen.frame, geo: geo, hasNotch: hasNotch) else { mark.orderOut(nil); return }
         let id = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? CGMainDisplayID()
         let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
-        let hidden = Chin.menuBarHidden(windows: windows, display: CGDisplayBounds(id),
+        let hidden = LeftMark.menuBarHidden(windows: windows, display: CGDisplayBounds(id),
                                         alwaysHide: UserDefaults.standard.bool(forKey: "_HIHideMenuBar"))
-        chinView.waiting = (store.counts[.blocked] ?? 0) > 0
-        if hidden || store.expanded { chin.orderOut(nil); return }
-        if chin.frame != frame { chin.setFrame(frame, display: true) }
-        if !chin.isVisible { chin.orderFrontRegardless() }
+        let look = LeftMark.look(store.counts)
+        if look.color != markView.look.color || look.count != markView.look.count { markView.look = look }
+        if hidden || store.expanded { mark.orderOut(nil); return }
+        if mark.frame != frame { mark.setFrame(frame, display: true) }
+        if !mark.isVisible { mark.orderFrontRegardless() }
     }
 
     func tick() {
@@ -165,7 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if Date().timeIntervalSince(closedAt!) > 0.45 {
                 windowLarge = false; closedAt = nil
                 panel.setFrame(smallFrame, display: true)
-                chinTick()
+                markTick()
             }
         }
 
